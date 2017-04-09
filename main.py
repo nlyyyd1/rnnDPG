@@ -56,32 +56,39 @@ def main():
             e_steps += 1    
     
     reward_st = np.array([0])#这个是用来存每一次的rewards的
+
     
     for i in xrange(episodes):#一共要循环1000次
         print '====starting episode no:',i,'====','\n'
         observation = env.reset()#每个情节初始化，但是模型参数不初始化
         reward_per_episode = 0
-        LSTM_SIZE = 40
+        LSTM_SIZE = 2
         statec_t1 = np.zeros((BATCH_SIZE,LSTM_SIZE))
         stateh_t1 = np.zeros((BATCH_SIZE,LSTM_SIZE))
         exp = []
+        agent.train()
+        agent.train()
+        agent.train()
+        agent.train()
+        agent.train()
         for t in xrange(steps):
             #env.render()
             x = [observation[0:num_states]]
-            x = np.reshape(x*BATCH_SIZE,[BATCH_SIZE,num_states])
-            actor,statec_t1,stateh_t1 = agent.evaluate_actor(x,statec_t1,stateh_t1)
+            actor,statec_t1,stateh_t1 = agent.evaluate_actor(np.reshape(x*BATCH_SIZE,[BATCH_SIZE,num_states]),statec_t1,stateh_t1)
+            #print 'full observation',observation
+            #print 'state',statec_t1[2]
             noise = exploration_noise.noise()
             #ra = random.random()
-            if (i<500):
-                action = actor[0]+noise
+            if (i<200):
+                action = noise + actor[0]
             else:
                 action = actor[0]
             observation,reward,done,info = env.step(action)
             #print 'Action at step',t,':',action,'reward:',reward,'\n'
             exp.append((x,action,observation[0:num_states],reward,done))
             
-            if counter >64:
-                agent.train()
+            if counter % 64 == 0:
+                m = 1
             counter += 1
             reward_per_episode += reward
             if (done or (t == steps-1)):

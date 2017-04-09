@@ -7,7 +7,7 @@ import math
 
 from tensorflow.models.rnn.ptb import reader
 
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.001
 BATCH_SIZE = 64
 TAU = 0.5
 
@@ -32,7 +32,7 @@ class ActorNet:
             self.q_gradient_input = tf.placeholder('float',[None,num_actions])
             gradients = tf.gradients(self.actor_model,self.actor_parameters,-self.q_gradient_input)
             #tf.gradient(x,y,z)表示的是求z×dx/dy
-            self.parameters_gradients,_ =tf.clip_by_global_norm(gradients,5) 
+            self.parameters_gradients,_ =tf.clip_by_global_norm(gradients,50) 
             #要控制一下梯度膨胀
             self.optimizer = tf.train.AdamOptimizer(LEARNING_RATE).apply_gradients(zip(self.parameters_gradients,self.actor_parameters))
             
@@ -54,7 +54,7 @@ class ActorNet:
         
         N_HIDDEN_1 = 40
         N_HIDDEN_2 = 30
-        LSTM_SIZE = 40
+        LSTM_SIZE = 2
         input = tf.placeholder(tf.float32,[None,num_states])
         statec = tf.placeholder(tf.float32,[None,LSTM_SIZE])
         stateh = tf.placeholder(tf.float32,[None,LSTM_SIZE])
@@ -62,22 +62,23 @@ class ActorNet:
                         
         with tf.variable_scope(models):
             
-            w1=tf.Variable(tf.random_uniform([num_states,N_HIDDEN_1],-1/math.sqrt(num_states),1/math.sqrt(num_states)))
+            w1=tf.Variable(tf.random_uniform([LSTM_SIZE,N_HIDDEN_1],-1/math.sqrt(LSTM_SIZE),1/math.sqrt(LSTM_SIZE)))
             w2=tf.Variable(tf.random_uniform([N_HIDDEN_1,N_HIDDEN_2],-1/math.sqrt(N_HIDDEN_1+num_actions),1/math.sqrt(N_HIDDEN_1+num_actions)))
-            w3=tf.Variable(tf.random_uniform([LSTM_SIZE,1],-0.003,0.003))
-            b1=tf.Variable(tf.random_uniform([N_HIDDEN_1],-1/math.sqrt(num_states),1/math.sqrt(num_states)))
-            b2=tf.Variable(tf.random_uniform([N_HIDDEN_2],-1/math.sqrt(N_HIDDEN_1+num_states),1/math.sqrt(N_HIDDEN_1+num_states)))
+            w3=tf.Variable(tf.random_uniform([N_HIDDEN_2,1],-0.003,0.003))
+            b1=tf.Variable(tf.random_uniform([N_HIDDEN_1],-1/math.sqrt(LSTM_SIZE),1/math.sqrt(LSTM_SIZE)))
+            b2=tf.Variable(tf.random_uniform([N_HIDDEN_2],-1/math.sqrt(N_HIDDEN_1+num_actions),1/math.sqrt(N_HIDDEN_1+num_actions)))
             b3=tf.Variable(tf.random_uniform([1],-0.003,0.003))
-                                
-            h1 = tf.nn.relu(tf.matmul(input,w1)+b1)
-            h = tf.nn.relu(tf.matmul(h1,w2)+b2)
+            
+            
             lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(LSTM_SIZE,state_is_tuple=True)
             init_state = lstm_cell.zero_state(BATCH_SIZE,dtype=tf.float32)
+                        
+            lstm_inputs = tf.reshape(input,shape=(BATCH_SIZE,-1,num_states))
+            h,state= tf.nn.dynamic_rnn(cell=lstm_cell,inputs=lstm_inputs,initial_state=init_state)
+            ip=tf.reshape(h,shape=(-1,LSTM_SIZE))        
             
-            lstm_inputs = tf.reshape(h,shape=(BATCH_SIZE,-1,N_HIDDEN_2))
-            h2,state= tf.nn.dynamic_rnn(cell=lstm_cell,inputs=lstm_inputs,initial_state=init_state)
-            h2=tf.reshape(h2,shape=(-1,LSTM_SIZE))        
-        
+            h1 = tf.nn.relu(tf.matmul(ip,w1)+b1)
+            h2 = tf.nn.relu(tf.matmul(h1,w2)+b2)
             actor_model = tf.matmul(h2,w3)+b3
             #6 parameters + 2 lstm para
             actor_parameters = tf.trainable_variables()
@@ -95,6 +96,7 @@ class ActorNet:
         return self.sess.run(self.target_actor_model,feed_dict={self.target_input:state_t})
     
     def train_actor(self,actor_state_in,q_gradient_input):
+        #print self.sess.run([self.actor_parameters[2],self.actor_parameters[5]])
         self.sess.run(self.optimizer,feed_dict={self.input:actor_state_in,self.q_gradient_input:q_gradient_input})
 
     def update_target_actor(self):

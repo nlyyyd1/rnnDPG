@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 import math
 
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.001
 BATCH_SIZE = 64
 TAU = 0.5
 
@@ -63,7 +63,7 @@ class CriticNet:
         #todo:network struck
         N_HIDDEN_1 = 40
         N_HIDDEN_2 = 30
-        LSTM_SIZE = 40
+        LSTM_SIZE = 2
         critic_state_in = tf.placeholder('float',[None,num_states])
         critic_action_in = tf.placeholder('float',[None,num_actions])
         with tf.variable_scope(models):

@@ -17,7 +17,7 @@ REPLAY_MEMORY_SIZE = 100000
 BATCH_SIZE = 64
 GAMMA = 0.99
 is_grad_inverter = True
-unroll = 500
+unroll = 900
 
 class DDPG:
     '''
@@ -87,8 +87,7 @@ class DDPG:
         
         # lets make unroll 500 first
         self.minibatches(unroll)
-        LSTM_SIZE = 40
-        
+        LSTM_SIZE = 2
         self.action_t_1 = self.actor_net.evaluate_target_actor(self.next_states)
         #下一个时刻的action倒是用target的actor网络计算出来的
         
@@ -105,8 +104,8 @@ class DDPG:
         self.y_i = np.reshape(self.y_i,[len(self.y_i),1])#我感觉就是为了防止他不是列向量
         
         #用target网络求出来时间差分钱项y之后，就可以更新q函数的网络了。
-        self.critic_net.train_critic(self.states,self.actions,self.y_i)
         
+        self.critic_net.train_critic(self.states,self.actions,self.y_i)
         action_for_delQ = self.actor_net.evaluate_actor(self.states)
         
         if is_grad_inverter:
